@@ -30,7 +30,7 @@ public class CommandeService {
     // @Autowired
     // Spring initialisera automatiquement ces paramètres
     public CommandeService(CommandeRepository commandeDao, ClientRepository clientDao, LigneRepository ligneDao,
-            ProduitRepository produitDao) {
+                           ProduitRepository produitDao) {
         this.commandeDao = commandeDao;
         this.clientDao = clientDao;
         this.ligneDao = ligneDao;
@@ -43,6 +43,7 @@ public class CommandeService {
      * - le client doit exister
      * - On initialise l'adresse de livraison avec l'adresse du client
      * - Si le client a déjà commandé plus de 100 articles, on lui offre une remise de 15%
+     *
      * @param clientCode la clé du client
      * @return la commande créée
      * @throws java.util.NoSuchElementException si le client n'existe pas
@@ -83,24 +84,52 @@ public class CommandeService {
      * @param quantite    la quantité commandée (positive)
      * @return la ligne de commande créée
      * @throws java.util.NoSuchElementException si la commande ou le produit n'existe pas
-     * @throws IllegalStateException si il n'y a pas assez de stock, si la commande a déjà été envoyée,
+     * @throws IllegalStateException s'il n'y a pas assez de stock, si la commande a déjà été envoyée,
      * @throws jakarta.validation.ConstraintViolationException si la quantité n'est pas positive
      */
     @Transactional
     public Ligne ajouterLigne(int commandeNum, int produitRef, @Positive int quantite) {
         // TODO : implémenter cette méthode
-        throw new UnsupportedOperationException("Pas encore implémenté");
+        //throw new UnsupportedOperationException("Pas encore implémenté");
+        var commande = commandeDao.findById(commandeNum).orElseThrow();
+        var produit = produitDao.findById(produitRef).orElseThrow();
+        var stock = produit.isIndisponible();
+        if (stock == false) {
+            var commandeEnvoyée = commande.getEnvoyeele();
+            if (commandeEnvoyée == null) {
+                if (quantite >= 0) {
+                    if (quantite <= produit.getUnitesEnStock()) {
+                        Ligne ligne = new Ligne(commande, produit, quantite);
+                        ligneDao.save(ligne);
+                        produit.setUnitesCommandees(produit.getUnitesCommandees() + quantite);
+                        produitDao.save(produit);
+                        return ligne;
+                    } else {
+                        throw new IllegalArgumentException("Quantité en stock trop basse");
+                    }
+                } else {
+                    throw new IllegalArgumentException("La quantité n'est pas valide");
+                }
+            } else {
+                throw new IllegalArgumentException("Commande déjà envoyée");
+            }
+        } else {
+            throw new IllegalArgumentException("Stock non valide");
+        }
+
+
     }
 
     /**
      * Service métier : Enregistre l'expédition d'une commande connue par sa clé
      * Règles métier :
-     * - la commande doit exister
-     * - la commande ne doit pas être déjà envoyée (le champ 'envoyeele' doit être null)
+     * - la commande doit exister --
+     * - la commande ne doit pas être déjà envoyée (le champ 'envoyeele' doit être null) --
      * - On renseigne la date d'expédition (envoyeele) avec la date du jour
      * - Pour chaque produit dans les lignes de la commande :
-     *      décrémente la quantité en stock (Produit.unitesEnStock) de la quantité dans la commande
-     *      décrémente la quantité commandée (Produit.unitesCommandees) de la quantité dans la commande
+     * décrémente la quantité en stock (Produit.unitesEnStock) de la quantité dans la commande
+     * décrémente la quantité commandée (Produit.unitesCommandees) de la quantité dans la commande
+     *
      * @param commandeNum la clé de la commande
      * @return la commande mise à jour
      * @throws java.util.NoSuchElementException si la commande n'existe pas
@@ -109,6 +138,13 @@ public class CommandeService {
     @Transactional
     public Commande enregistreExpedition(int commandeNum) {
         // TODO : implémenter cette méthode
-        throw new UnsupportedOperationException("Pas encore implémenté");
+        //throw new UnsupportedOperationException("Pas encore implémenté");
+        var commande = commandeDao.findById(commandeNum).orElseThrow();
+        var commandeEnvoyée = commande.getEnvoyeele();
+        if (commandeEnvoyée == null) {
+
+        } else {
+            throw new IllegalArgumentException("Commande déjà envoyée");
+        }
     }
 }
