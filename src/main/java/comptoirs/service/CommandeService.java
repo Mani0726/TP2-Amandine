@@ -3,6 +3,7 @@ package comptoirs.service;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
+import comptoirs.entity.Produit;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
@@ -105,16 +106,16 @@ public class CommandeService {
                         produitDao.save(produit);
                         return ligne;
                     } else {
-                        throw new IllegalArgumentException("Quantité en stock trop basse");
+                        throw new IllegalStateException("Quantité en stock trop basse");
                     }
                 } else {
                     throw new IllegalArgumentException("La quantité n'est pas valide");
                 }
             } else {
-                throw new IllegalArgumentException("Commande déjà envoyée");
+                throw new IllegalStateException("Commande déjà envoyée");
             }
         } else {
-            throw new IllegalArgumentException("Stock non valide");
+            throw new IllegalStateException("Stock non valide");
         }
 
 
@@ -141,10 +142,16 @@ public class CommandeService {
         //throw new UnsupportedOperationException("Pas encore implémenté");
         var commande = commandeDao.findById(commandeNum).orElseThrow();
         var commandeEnvoyée = commande.getEnvoyeele();
-        if (commandeEnvoyée == null) {
-
-        } else {
-            throw new IllegalArgumentException("Commande déjà envoyée");
+        if (commandeEnvoyée != null) {
+            throw new IllegalStateException("Commande déjà envoyée");
         }
+        LocalDate date = LocalDate.now();
+        commande.setEnvoyeele(date);
+        for (Ligne ligne : commande.getLignes()){
+            Produit produit = ligne.getProduit();
+            produit.setUnitesEnStock(produit.getUnitesEnStock()-ligne.getQuantite());
+            produit.setUnitesCommandees(produit.getUnitesCommandees()-ligne.getQuantite());
+        }
+        return commande;
     }
 }
